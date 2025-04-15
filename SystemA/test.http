@@ -1,0 +1,6 @@
+GET http://localhost:8080/cep/03132010
+
+###
+
+GET http://localhost:8080/cep/20010010
+
