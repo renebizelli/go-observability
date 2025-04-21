@@ -1,7 +1,6 @@
 package webserver
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,27 +8,66 @@ import (
 	systemB "renebizelli/go/observability/SystemA/externals/systemB"
 	"renebizelli/go/observability/SystemA/utils"
 	"time"
+
+	"github.com/go-chi/chi/v5"
+
+	"github.com/go-chi/chi/v5/middleware"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Handler struct {
-	mux     *http.ServeMux
-	systemB *systemB.Service
-	timeout time.Duration
+	router     *chi.Mux
+	systemB    *systemB.Service
+	OTELTracer trace.Tracer
+	timeout    time.Duration
 }
 
-func NewHandler(mux *http.ServeMux, systemB *systemB.Service, timeout time.Duration) *Handler {
+func NewHandler(router *chi.Mux, systemB *systemB.Service, trace trace.Tracer, timeout time.Duration) *Handler {
 	return &Handler{
-		mux:     mux,
-		systemB: systemB,
-		timeout: timeout,
+		router:     router,
+		systemB:    systemB,
+		OTELTracer: trace,
+		timeout:    timeout,
 	}
 }
 
 func (l *Handler) RegisterRoutes() {
-	l.mux.HandleFunc("GET /cep/{cep}", l.Handler)
+
+	l.router.Use(middleware.RequestID)
+	l.router.Use(middleware.RealIP)
+	l.router.Use(middleware.Recoverer)
+	l.router.Use(middleware.Logger)
+	l.router.Use(middleware.Timeout(60 * time.Second))
+
+	l.router.Get("/weather/{cep}", l.Handler)
+
 }
 
 func (s *Handler) Handler(w http.ResponseWriter, r *http.Request) {
+
+	carrier := propagation.HeaderCarrier(r.Header)
+	ctx := r.Context()
+	ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
+
+	_, span := s.OTELTracer.Start(ctx, "System A - Handler")
+	defer span.End()
+
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(r.Header))
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+}
+
+func (s *Handler) cHandler(w http.ResponseWriter, r *http.Request) {
+
+	carrier := propagation.HeaderCarrier(r.Header)
+	ctx := r.Context()
+	ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
+
+	_, span := s.OTELTracer.Start(ctx, "System A - Handler")
+	defer span.End()
 
 	searchedCEP := r.PathValue("cep")
 
@@ -44,11 +82,12 @@ func (s *Handler) Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(r.Header))
+
 	var ch_weather = make(chan *systemB.WeatherResponse)
 	defer close(ch_weather)
 
-	ctx, cancel := context.WithTimeout(r.Context(), s.timeout)
-	defer cancel()
+	fmt.Println("response in System B:", searchedCEP)
 
 	go s.systemB.Get(ctx, searchedCEP, ch_weather)
 

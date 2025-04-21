@@ -1,6 +1,6 @@
-GET http://localhost:8080/cep/03132010
+GET http://localhost:8080/weather/03132010
 
 ###
 
-GET http://localhost:8080/cep/20010010
+GET http://localhost:8080/weather/20010010
 

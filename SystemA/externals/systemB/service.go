@@ -2,6 +2,7 @@ package systemB
 
 import (
 	"context"
+	"fmt"
 	"renebizelli/go/observability/SystemA/utils"
 	"strings"
 )
@@ -22,7 +23,10 @@ func (s *Service) Get(ctx context.Context, searchedCEP string, channel chan<- *W
 
 	response, err := utils.ExecRequestWithContext[WeatherResponse](ctx, url, nil)
 
+	fmt.Println("response in System B:", response)
+
 	if err != nil {
+		fmt.Println("Error in System B:", err)
 		channel <- &WeatherResponse{
 			HttpStatus: err.StatusCode,
 		}

@@ -7,9 +7,11 @@ import (
 )
 
 type Config struct {
-	WEBSERVER_PORT   int
-	SERVICES_TIMEOUT int
-	SYSTEM_B_URL     string
+	OTEL_SERVICE_NAME           string
+	OTEL_EXPORTER_OTLP_ENDPOINT string
+	WEBSERVER_PORT              int
+	SERVICES_TIMEOUT            int
+	SYSTEM_B_URL                string
 }
 
 func LoadConfig(path string) *Config {

@@ -1,0 +1,50 @@
+services:
+  
+  zipkin:
+    image: openzipkin/zipkin:latest
+    restart: always
+    ports:
+      - "9411:9411"
+    networks:
+      weather: 
+  
+
+  system-a:
+    build:
+      context: ./SystemA
+      dockerfile: Dockerfile
+    container_name: systema
+    ports:
+      - 8080:8080
+    depends_on:
+      - system-b
+    networks:
+      - weather     
+
+  system-b:
+    build:
+      context: ./SystemB
+      dockerfile: Dockerfile
+    container_name: systemb
+    ports:
+      - 8090:8090
+    depends_on:
+      - otel-collector   
+    networks:
+      - weather    
+      
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    restart: always
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./.docker/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+    networks:
+      - weather   
+    depends_on:
+      - zipkin 
+
+networks:
+  weather:   

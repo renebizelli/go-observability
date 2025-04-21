@@ -9,21 +9,28 @@ import (
 
 	"renebizelli/go/observability/SystemB/dtos"
 	"renebizelli/go/observability/SystemB/utils"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Service struct {
-	url string
-	key string
+	url        string
+	key        string
+	OTELTracer trace.Tracer
 }
 
-func NewWeatherService(mux *http.ServeMux, url string, key string, timeout time.Duration) *Service {
+func NewWeatherService(mux *http.ServeMux, OTELTracer trace.Tracer, url string, key string, timeout time.Duration) *Service {
 	return &Service{
-		url: url,
-		key: key,
+		url:        url,
+		key:        key,
+		OTELTracer: OTELTracer,
 	}
 }
 
 func (s *Service) Get(ctx context.Context, city string, channel chan<- *dtos.WeatherResponse) {
+
+	_, span := s.OTELTracer.Start(ctx, "System B - Weather")
+	defer span.End()
 
 	url := fmt.Sprintf("%s%s", s.url, url.QueryEscape(city))
 

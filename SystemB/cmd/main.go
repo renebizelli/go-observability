@@ -1,32 +1,72 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"renebizelli/go/observability/SystemB/configs"
 	viacep "renebizelli/go/observability/SystemB/externals/ViaCEP"
 	weatherAPI "renebizelli/go/observability/SystemB/externals/WeatherAPI"
 	"renebizelli/go/observability/SystemB/internals/webserver"
 	"time"
+
+	"go.opentelemetry.io/otel"
 )
 
 func main() {
 
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt)
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
 	configs := configs.LoadConfig("./")
+
+	otelShutdown, err := SetupOTelSDK(ctx)
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer func() {
+		if err := otelShutdown(ctx); err != nil {
+			log.Fatal("failed to shutdown TracerProvider: %w", err)
+		}
+	}()
+
+	tracer := otel.Tracer(" System B - microservice-tracer")
 
 	mux := http.NewServeMux()
 
 	timeout := time.Duration(configs.SERVICES_TIMEOUT) * time.Second
 
-	cep := viacep.NewCEPService(configs.VIACEP_URL, timeout)
+	cep := viacep.NewCEPService(configs.VIACEP_URL, tracer, timeout)
 
-	weather := weatherAPI.NewWeatherService(mux, configs.WEATHERAPI_URL, configs.WEATHERAPI_KEY, timeout)
+	weather := weatherAPI.NewWeatherService(mux, tracer, configs.WEATHERAPI_URL, configs.WEATHERAPI_KEY, timeout)
 
-	handler := webserver.NewHandler(mux, cep, weather, timeout)
+	handler := webserver.NewHandler(mux, cep, weather, tracer, timeout)
 	handler.RegisterRoutes()
 
-	fmt.Printf("Web server System A running on port %v\n", configs.WEBSERVER_PORT)
+	go func() {
+		log.Printf("Starting server on port :%v", configs.WEBSERVER_PORT)
+		if err := http.ListenAndServe(fmt.Sprintf(":%v", configs.WEBSERVER_PORT), mux); err != nil {
+			log.Fatal(err)
+		}
+	}()
 
-	http.ListenAndServe(fmt.Sprintf(":%v", configs.WEBSERVER_PORT), mux)
+	select {
+	case <-sigCh:
+		log.Println("Shutting down gracefully, CTRL+C pressed...")
+	case <-ctx.Done():
+		log.Println("Shutting down due to other reason...")
+	}
+
+	// Create a timeout context for the graceful shutdown
+	_, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
 
 }

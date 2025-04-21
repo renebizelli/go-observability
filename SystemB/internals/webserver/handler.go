@@ -10,29 +10,39 @@ import (
 	weatherAPI "renebizelli/go/observability/SystemB/externals/WeatherAPI"
 	"renebizelli/go/observability/SystemB/utils"
 	"time"
+
+	"go.opentelemetry.io/otel/baggage"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Handler struct {
-	mux     *http.ServeMux
-	cep     *viacep.Service
-	weather *weatherAPI.Service
-	timeout time.Duration
+	mux        *http.ServeMux
+	cep        *viacep.Service
+	weather    *weatherAPI.Service
+	timeout    time.Duration
+	OTELTracer trace.Tracer
 }
 
-func NewHandler(mux *http.ServeMux, cep *viacep.Service, weather *weatherAPI.Service, timeout time.Duration) *Handler {
+func NewHandler(mux *http.ServeMux, cep *viacep.Service, weather *weatherAPI.Service, OTELTracer trace.Tracer, timeout time.Duration) *Handler {
 	return &Handler{
-		mux:     mux,
-		cep:     cep,
-		weather: weather,
-		timeout: timeout,
+		mux:        mux,
+		cep:        cep,
+		weather:    weather,
+		OTELTracer: OTELTracer,
+		timeout:    timeout,
 	}
 }
 
 func (l *Handler) RegisterRoutes() {
-	l.mux.HandleFunc("GET /cep/{cep}", l.Handler)
+	l.mux.HandleFunc("GET /weather/{cep}", l.Handler)
 }
 
 func (s *Handler) Handler(w http.ResponseWriter, r *http.Request) {
+
+	ctx := baggage.ContextWithoutBaggage(r.Context())
+
+	_, span := s.OTELTracer.Start(ctx, "System B - Weather")
+	defer span.End()
 
 	searchedCEP := r.PathValue("cep")
 
