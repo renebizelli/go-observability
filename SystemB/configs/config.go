@@ -7,11 +7,13 @@ import (
 )
 
 type Config struct {
-	WEBSERVER_PORT   int
-	SERVICES_TIMEOUT int
-	VIACEP_URL       string
-	WEATHERAPI_URL   string
-	WEATHERAPI_KEY   string
+	WEBSERVER_PORT              int
+	SERVICES_TIMEOUT            int
+	VIACEP_URL                  string
+	WEATHERAPI_URL              string
+	WEATHERAPI_KEY              string
+	OTEL_SERVICE_NAME           string
+	OTEL_EXPORTER_OTLP_ENDPOINT string
 }
 
 func LoadConfig(path string) *Config {

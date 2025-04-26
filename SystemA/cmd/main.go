@@ -68,5 +68,3 @@ func main() {
 	defer shutdownCancel()
 
 }
-
-const endpointURL = "http://localhost:9411/api/v2/spans"

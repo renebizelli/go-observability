@@ -18,6 +18,8 @@ import (
 
 func main() {
 
+	fmt.Println("Starting System B - microservice-tracer")
+
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt)
 
@@ -26,7 +28,7 @@ func main() {
 
 	configs := configs.LoadConfig("./")
 
-	otelShutdown, err := SetupOTelSDK(ctx)
+	otelShutdown, err := SetupOTelSDK(ctx, configs.OTEL_SERVICE_NAME, configs.OTEL_EXPORTER_OTLP_ENDPOINT)
 
 	if err != nil {
 		panic(err)

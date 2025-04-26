@@ -54,21 +54,6 @@ func (s *Handler) Handler(w http.ResponseWriter, r *http.Request) {
 	_, span := s.OTELTracer.Start(ctx, "System A - Handler")
 	defer span.End()
 
-	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(r.Header))
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-}
-
-func (s *Handler) cHandler(w http.ResponseWriter, r *http.Request) {
-
-	carrier := propagation.HeaderCarrier(r.Header)
-	ctx := r.Context()
-	ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
-
-	_, span := s.OTELTracer.Start(ctx, "System A - Handler")
-	defer span.End()
-
 	searchedCEP := r.PathValue("cep")
 
 	cep := utils.NewCEP(searchedCEP)
