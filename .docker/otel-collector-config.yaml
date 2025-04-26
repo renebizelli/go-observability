@@ -1,3 +1,8 @@
+
+extensions:
+  health_check:
+    endpoint: "localhost:13133" 
+
 receivers:
   otlp:
     protocols:
@@ -5,7 +10,7 @@ receivers:
 
 exporters:
   otlp:
-    endpoint: zipkin:4317
+    endpoint: localhost:4317
     tls:
       insecure: true
 
@@ -13,6 +18,7 @@ processors:
   batch:
 
 service:
+  extensions: [health_check]
   pipelines:
     traces:
       receivers: [otlp]
