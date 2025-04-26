@@ -25,7 +25,7 @@ func NewCEPService(url string, OTELTracer trace.Tracer, timeout time.Duration) *
 
 func (s *Service) Get(ctx context.Context, searchedCEP string, channel chan<- *dtos.CEPResponse) {
 
-	_, span := s.OTELTracer.Start(ctx, "System B - CEP")
+	_, span := s.OTELTracer.Start(ctx, "ViaCEP")
 	defer span.End()
 
 	url := strings.Replace(s.url, "?", searchedCEP, 1)

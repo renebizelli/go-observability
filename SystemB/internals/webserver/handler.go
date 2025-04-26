@@ -1,7 +1,6 @@
 package webserver
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,7 +10,8 @@ import (
 	"renebizelli/go/observability/SystemB/utils"
 	"time"
 
-	"go.opentelemetry.io/otel/baggage"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -39,9 +39,10 @@ func (l *Handler) RegisterRoutes() {
 
 func (s *Handler) Handler(w http.ResponseWriter, r *http.Request) {
 
-	ctx := baggage.ContextWithoutBaggage(r.Context())
+	carrier := propagation.HeaderCarrier(r.Header)
+	ctx := otel.GetTextMapPropagator().Extract(r.Context(), carrier)
 
-	_, span := s.OTELTracer.Start(ctx, "System B - Weather")
+	_, span := s.OTELTracer.Start(ctx, "System B")
 	defer span.End()
 
 	searchedCEP := r.PathValue("cep")
@@ -60,10 +61,12 @@ func (s *Handler) Handler(w http.ResponseWriter, r *http.Request) {
 	var ch_cep = make(chan *dtos.CEPResponse)
 	defer close(ch_cep)
 
-	ctx, cancel := context.WithTimeout(r.Context(), s.timeout)
-	defer cancel()
+	// ctx, cancel := context.WithTimeout(ctx, s.timeout)
+	// defer cancel()
 
 	go s.cep.Get(ctx, searchedCEP, ch_cep)
+
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(r.Header))
 
 	select {
 	case cep_response := <-ch_cep:

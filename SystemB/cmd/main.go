@@ -40,7 +40,7 @@ func main() {
 		}
 	}()
 
-	tracer := otel.Tracer(" System B - microservice-tracer")
+	tracer := otel.GetTracerProvider().Tracer(" System B - microservice-tracer")
 
 	mux := http.NewServeMux()
 

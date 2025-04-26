@@ -4,10 +4,11 @@ receivers:
       grpc:
         endpoint: "otel-collector:4317"
 
-
 exporters:
   zipkin:
     endpoint: http://zipkin:9411/api/v2/spans
+
+  debug:
 
 processors:
   batch:
@@ -17,4 +18,4 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [zipkin]
+      exporters: [debug, zipkin]

@@ -12,8 +12,6 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/go-chi/chi/v5/middleware"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -47,11 +45,7 @@ func (l *Handler) RegisterRoutes() {
 
 func (s *Handler) Handler(w http.ResponseWriter, r *http.Request) {
 
-	carrier := propagation.HeaderCarrier(r.Header)
-	ctx := r.Context()
-	ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
-
-	_, span := s.OTELTracer.Start(ctx, "System A - Handler")
+	ctx, span := s.OTELTracer.Start(r.Context(), "Handler")
 	defer span.End()
 
 	searchedCEP := r.PathValue("cep")
@@ -67,12 +61,8 @@ func (s *Handler) Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(r.Header))
-
 	var ch_weather = make(chan *systemB.WeatherResponse)
 	defer close(ch_weather)
-
-	fmt.Println("response in System B:", searchedCEP)
 
 	go s.systemB.Get(ctx, searchedCEP, ch_weather)
 

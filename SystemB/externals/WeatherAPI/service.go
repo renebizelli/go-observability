@@ -29,7 +29,7 @@ func NewWeatherService(mux *http.ServeMux, OTELTracer trace.Tracer, url string, 
 
 func (s *Service) Get(ctx context.Context, city string, channel chan<- *dtos.WeatherResponse) {
 
-	_, span := s.OTELTracer.Start(ctx, "System B - Weather")
+	_, span := s.OTELTracer.Start(ctx, "Weather API")
 	defer span.End()
 
 	url := fmt.Sprintf("%s%s", s.url, url.QueryEscape(city))

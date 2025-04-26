@@ -7,6 +7,10 @@ import (
 	"net/http"
 
 	"renebizelli/go/observability/SystemA/dtos"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 func ExecRequestWithContext[T any](ctx context.Context, URL string, headers map[string]string) (*T, *dtos.RequestError) {
@@ -24,7 +28,10 @@ func ExecRequestWithContext[T any](ctx context.Context, URL string, headers map[
 		req.Header.Add(key, value)
 	}
 
-	res, err := http.DefaultClient.Do(req)
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
+
+	httpclient := &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
+	res, err := httpclient.Do(req)
 
 	select {
 	case <-ctx.Done():
